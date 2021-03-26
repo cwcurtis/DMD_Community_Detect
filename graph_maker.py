@@ -1,5 +1,5 @@
 import numpy as np
-
+import copy as copy
 
 def max_eval_cmp(A):
     tol = 1e-3
@@ -62,32 +62,49 @@ def graph_build_sw(n, kavg, beta):
     for ii in range(n):
         for jj in range(n):
             dif = np.abs(ii-jj)
-            if np.mod(dif, shft) <= kah and dif > 0:
+            # allow for self loops because of coding sanity
+            if np.mod(dif, shft) <= kah:
                 amat[ii, jj] = 1
                 amat[jj, ii] = 1
-
     # rewire
     for ii in range(n):
+        priors = np.array([], dtype=np.int)
         for jj in range(ii + 1, ii + kah + 1):
             jjs = np.mod(jj, n)
-            pdf = np.zeros(n, dtype=np.float64)
-            pdf[:ii] = 1./(n-1.)
-            pdf[ii+1:] = 1./(n-1.)
-            pdist = np.ones(n, dtype=np.float64)
-            for ll in range(1, n-1):
-                pdist[ll-1] = np.sum(pdf[:ll])
             pval = np.random.uniform(0., 1., 1)
             if pval < beta:
+                non_edge_fst_inds = amat[ii, :] == 0 # this works because we allowed for self loops
+                potential_pool = inds[non_edge_fst_inds]
+
+                if np.size(priors) > 0: # we don't potentially rewrite to nodes which were just nearest neighbors
+                    non_edge_scnd_inds = np.ones(np.size(potential_pool), dtype=np.bool)
+                    for val in priors:
+                        temp = potential_pool != val
+                        non_edge_scnd_inds = np.bitwise_and(temp, non_edge_scnd_inds)
+
+                    non_edge_nodes = potential_pool[non_edge_scnd_inds]
+                else:
+                    non_edge_nodes = potential_pool
+
+                num_non_edge_nodes = np.size(non_edge_nodes)
+                pdf = 1. / (num_non_edge_nodes+1.) * np.ones(num_non_edge_nodes, dtype=np.float64)
+                pdist = np.ones(num_non_edge_nodes, dtype=np.float64)
+                for ll in range(1, num_non_edge_nodes):
+                    pdist[ll - 1] = np.sum(pdf[:ll])
+
                 chsvl = np.random.uniform(0., 1., 1)
                 indskp = pdist > chsvl
-                indrw = np.min(inds[indskp])
+                indrw = np.min(non_edge_nodes[indskp])
                 if amat[ii, indrw] == 0:
                     amat[ii, jjs] = 0
                     amat[jjs, ii] = 0
 
                     amat[ii, indrw] = 1
                     amat[indrw, ii] = 1
+                    priors = np.append(priors, jjs)
 
+    # we remove self loops
+    amat -= np.eye(n, dtype=np.int)
     return amat
 
 
