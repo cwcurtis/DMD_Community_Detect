@@ -1,6 +1,5 @@
 import numpy as np
 from kuramoto import kuramoto
-import time
 import pickle
 
 

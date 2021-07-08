@@ -4,6 +4,7 @@ import kuramoto_runfile as kr
 import dmd_runfile as dmd
 import pickle
 import multiprocessing as mp
+from time import time
 
 
 def inner_loop(pair, nds, tf, dt, kval, omgs, sgm):
@@ -15,7 +16,7 @@ def inner_loop(pair, nds, tf, dt, kval, omgs, sgm):
 
 if __name__ == '__main__':
 
-    nds = 800
+    nds = 400
     omgs = np.random.randn(nds)
     tf = 800.
     dt = 5e-2
@@ -38,5 +39,8 @@ if __name__ == '__main__':
     gg.graph_run(nds, 'sw')
 
     pool = mp.Pool(mp.cpu_count())
+    start = time()
     pool.starmap(inner_loop, [(pair, nds, tf, dt, kval, omgs, sgm) for pair in full_schedule])
+    end = time()
     pool.close()
+    print("Elapsed time is: %f" % (end-start))
